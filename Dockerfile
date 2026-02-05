@@ -13,12 +13,8 @@ RUN wget -q https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/re
     && chmod +x /usr/local/bin/realesrgan-ncnn-vulkan \
     && rm *.zip
 
-# Download Real-ESRGAN + GFPGAN models with retries
-RUN mkdir -p /models /usr/local/bin/models \
-    && wget --tries=3 --waitretry=5 -P /usr/local/bin/models \
-       https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.bin \
-    && wget --tries=3 --waitretry=5 -P /usr/local/bin/models \
-       https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.param \
+# Download GFPGAN model for face restore (Real-ESRGAN models bundled in ncnn binary)
+RUN mkdir -p /models \
     && wget --tries=3 --waitretry=5 -O /models/GFPGANv1.4.pth \
        https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth
 
