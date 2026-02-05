@@ -2,12 +2,16 @@ FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
 
 WORKDIR /app
 
-# Install deps + Real-ESRGAN
-RUN apt-get update && apt-get install -y wget unzip libvulkan1 ffmpeg && \
-    wget -q https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip && \
-    unzip realesrgan-ncnn-vulkan-*.zip -d /usr/local/bin && \
-    chmod +x /usr/local/bin/realesrgan-ncnn-vulkan && \
-    rm *.zip && apt-get clean
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget unzip libvulkan1 ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Real-ESRGAN binary
+RUN wget -q https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip \
+    && unzip realesrgan-ncnn-vulkan-*.zip -d /usr/local/bin \
+    && chmod +x /usr/local/bin/realesrgan-ncnn-vulkan \
+    && rm *.zip
 
 # Download Real-ESRGAN + GFPGAN models
 RUN mkdir -p /models /usr/local/bin/models && \
