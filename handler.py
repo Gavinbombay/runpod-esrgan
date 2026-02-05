@@ -1,5 +1,5 @@
 """
-RunPod Serverless Handler — Real-ESRGAN 4x + Face Blur
+RunPod Serverless Handler — Real-ESRGAN 4x + GFPGAN Face Restore + Audio Enhancement
 Deploy: runpodctl deploy --handler handler.py
 """
 
@@ -61,6 +61,23 @@ def restore_faces_video(input_path: str, output_path: str):
     print(f"Face restoration complete: {frame_count} frames")
     return output_path
 
+def enhance_audio(input_path: str, output_path: str):
+    """Enhance audio: noise reduction + normalization."""
+    # Extract audio, apply noise reduction and loudness normalization
+    cmd = [
+        "ffmpeg", "-y", "-i", input_path,
+        "-af", "highpass=f=80,lowpass=f=12000,afftdn=nf=-20,loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-c:v", "copy",
+        output_path
+    ]
+    print(f"Enhancing audio...")
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    if result.returncode != 0:
+        print(f"Audio enhance warning: {result.stderr}")
+        # Don't fail, just skip audio enhancement
+        return input_path
+    return output_path
+
 def run_realesrgan(input_path: str, output_path: str, scale: int = 4, model: str = REALESRGAN_MODEL):
     cmd = [
         "realesrgan-ncnn-vulkan",
@@ -97,6 +114,7 @@ def handler(job):
         scale: Upscale factor (2 or 4, default 4)
         model: Model name (default realesr-general-x4v3)
         face_restore: GFPGAN face enhancement (default true)
+        audio_enhance: Noise reduction + normalization (default true)
         upload_url: Optional pre-signed URL to upload result
     """
     import time
@@ -107,6 +125,7 @@ def handler(job):
     scale = job_input.get("scale", 4)
     model = job_input.get("model", REALESRGAN_MODEL)
     face_restore = job_input.get("face_restore", True)
+    audio_enhance = job_input.get("audio_enhance", True)
     upload_url = job_input.get("upload_url", "")
 
     if not video_url:
@@ -129,13 +148,19 @@ def handler(job):
             restore_faces_video(current, restored_path)
             current = restored_path
 
+        # Audio enhancement
+        if audio_enhance:
+            audio_path = os.path.join(tmpdir, "audio_enhanced.mp4")
+            current = enhance_audio(current, audio_path)
+
         result_url = upload_result(current, upload_url)
 
         return {
             "video_url": result_url,
             "duration_secs": round(time.time() - start, 1),
             "scale": scale,
-            "face_restore": face_restore
+            "face_restore": face_restore,
+            "audio_enhance": audio_enhance
         }
 
 runpod.serverless.start({"handler": handler})
